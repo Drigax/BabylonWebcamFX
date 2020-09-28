@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <title>Underwater Head Babylon.js Filter</title>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="description" content="Babylon.js filter that places the user in the underwater demo scene.">
+  <meta name="keywords" content="Babylon.js, filter, underwater, OBS, streamer, shader">
+
+  <meta name="obs-width" content="1920">
+  <meta name="obs-height" content="1080">
+  <meta name="obs-fps" content="60">
+  <meta name="obs-shutdown" content="true">
+  <meta name="obs-refresh" content="false">
+
+  <meta name="obs-browser" content="width=1920,height=1080,fps=60,shutdown=true,refresh=false">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+
+  <style>
+	/* Style reset */
+	/* http://meyerweb.com/eric/tools/css/reset/
+	   v2.0 | 20110126
+	   License: none (public domain)
+	*/
+
+	html, body, div, span, applet, object, iframe,
+	h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+	a, abbr, acronym, address, big, cite, code,
+	del, dfn, em, img, ins, kbd, q, s, samp,
+	small, strike, strong, sub, sup, tt, var,
+	b, u, i, center,
+	dl, dt, dd, ol, ul, li,
+	fieldset, form, label, legend,
+	table, caption, tbody, tfoot, thead, tr, th, td,
+	article, aside, canvas, details, embed,
+	figure, figcaption, footer, header, hgroup,
+	menu, nav, output, ruby, section, summary,
+	time, mark, audio, video {
+		margin: 0;
+		padding: 0;
+		border: 0;
+		font-size: 100%;
+		font: inherit;
+		vertical-align: baseline;
+	}
+	/* HTML5 display-role reset for older browsers */
+	article, aside, details, figcaption, figure,
+	footer, header, hgroup, menu, nav, section {
+		display: block;
+	}
+	body {
+		line-height: 1;
+	}
+	ol, ul {
+		list-style: none;
+	}
+	blockquote, q {
+		quotes: none;
+	}
+	blockquote:before, blockquote:after,
+	q:before, q:after {
+		content: '';
+		content: none;
+	}
+	table {
+		border-collapse: collapse;
+		border-spacing: 0;
+	}
+	/* End of style reset */
+
+	body {
+		font-family: "Open Sans", sans-serif;
+		color: white;
+	}
+
+	p + h1, p + h2, p + h3, p + h4, p + h5 {
+		margin-top: 32px;
+	}
+
+	p + p {
+		margin-top: 24px;
+	}
+
+	.main_slant {
+		position: absolute;
+		width: 200%;
+		left: -50%;
+	}
+
+	#bg_slant1 {
+		left: -80%;
+		bottom: -20%;
+		height: 75%;
+		width: 250%;
+		background: #202d6f;
+		transform: rotate(15deg);
+	}
+
+	#bg_slant2 {
+		height: 200px;
+		background: #1c2b71;
+		transform: rotate(1deg);
+		top: -50px;
+	}
+
+	#bg_slant3 {
+		height: 500px;
+		background: #0C1633;
+		transform: rotate(-8deg);
+		bottom: -200px;
+	}
+
+	.bs-page {
+		background: #16245800;
+		font-size: 24px;
+		position: relative;
+		line-height: 30px;
+		text-align: center;
+		padding: 0%;
+		width: 100vw;
+		height: 100vh;
+		box-sizing: border-box;
+		overflow: hidden;
+	}
+
+	.bs-container {
+		position: relative;
+		max-width: 800px;
+		margin: 0px auto;
+	}
+
+	.bs-image {
+		display: block;
+		margin: 40px;
+		margin: 40px auto;
+	}
+
+    .fill-container {
+        width: 100%;
+        height: 100%;
+    }
+  </style>
+
+    <script src="https://preview.babylonjs.com/babylon.js"></script>
+    <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
+
+</head>
+
+<body>
+
+<div id="wrapper">
+
+    <div class="bs-page">
+        <canvas id="bjsCanvas"; class="fill-container"></canvas>
+    </div>
+</div>
+
+<script>
+    var canvas = document.getElementById("bjsCanvas"); // Get the canvas element
+    var engine = new BABYLON.Engine(canvas, true); // Generate the BABYLON 3D engine
+
+    /******* Add the create scene function ******/
+    var createScene = function () {
+        BABYLON.Effect.ShadersStore["customVertexShader"] = "\r\n" +
+            "precision highp float;\r\n" +
+
+            "// Attributes\r\n" +
+            "attribute vec3 position;\r\n" +
+            "attribute vec2 uv;\r\n" +
+
+            "// Uniforms\r\n" +
+            "uniform mat4 worldViewProjection;\r\n" +
+
+            "// Varying\r\n" +
+            "varying vec2 vUV;\r\n" +
+
+            "void main(void) {\r\n" +
+            "    gl_Position = worldViewProjection * vec4(position, 1.0);\r\n" +
+
+            "    vUV = uv;\r\n" +
+            "}\r\n";
+
+        BABYLON.Effect.ShadersStore["customFragmentShader"] = "\r\n" +
+            "precision highp float;\r\n" +
+
+            "varying vec2 vUV;\r\n" +
+
+            "uniform sampler2D textureSampler;\r\n" +
+
+            "float getLuminance(vec3 color)\r\n" +
+            "{\r\n" +
+                "return clamp(dot(color, vec3(0.2126, 0.7152, 0.0722)), 0., 1.);\r\n" +
+            "}\r\n" +
+
+            "void main(void) {\r\n" +
+            "    vec4 col = texture2D(textureSampler, vUV);\r\n" +
+            "    if (getLuminance(col.rgb) <= 0.01) col.a = 0.0;\r\n" +
+            "    gl_FragColor = col;\r\n" +
+            "}\r\n";
+
+        var myVideo;            // Our Webcam stream (a DOM <video>)
+        var isAssigned = false; // Is the Webcam stream assigned to material?
+
+        var scene = new BABYLON.Scene(engine);
+
+        // This creates and positions a free camera (non-mesh)
+        var camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene);
+
+        // This targets the camera to scene origin
+        camera.setTarget(BABYLON.Vector3.Zero());
+
+        // This attaches the camera to the canvas
+        camera.attachControl(canvas, true);
+
+
+        var plane1 = BABYLON.Mesh.CreatePlane("videoPlane", 7, scene);
+        plane1.rotation.z = Math.PI;
+        plane1.position.y = 1;
+
+
+        var shaderMaterial = new BABYLON.ShaderMaterial("shader", scene,
+            {
+                vertex: "custom",
+                fragment: "custom",
+            },
+            {
+                attributes: ["position", "normal", "uv"],
+                uniforms: ["world", "worldView", "worldViewProjection", "view", "projection"],
+                needAlphaBlending: true
+        });
+        //shaderMaterial = new BABYLON.StandardMaterial("shader", scene);
+        shaderMaterial.baseColorTexture =
+        shaderMaterial.backFaceCulling = false;
+
+
+        // Create our video texture
+        BABYLON.VideoTexture.CreateFromWebCam(scene, function (videoTexture) {
+            myVideo = videoTexture;
+            shaderMaterial.setTexture("textureSampler", myVideo);
+            //shaderMaterial.diffuseTexture = myVideo;
+        }, { maxWidth: 1920, maxHeight: 1080 });
+
+        // When there is a video stream (!=undefined),
+        // check if it's ready          (readyState == 4),
+        // before applying shaderMaterial to avoid the Chrome console warning.
+        // [.Offscreen-For-WebGL-0xa957edd000]RENDER WARNING: there is no texture bound to the unit 0
+        scene.onBeforeRenderObservable.add(function () {
+            if (myVideo !== undefined && isAssigned == false) {
+                if (myVideo.video.readyState == 4) {
+                    plane1.material = shaderMaterial;
+                    isAssigned = true;
+                }
+            }
+        });
+
+        return scene;
+    };
+    /******* End of the create scene function ******/
+
+    var scene = createScene(); //Call the createScene function
+
+    // Register a render loop to repeatedly render the scene
+    engine.runRenderLoop(function () {
+            scene.render();
+    });
+
+    // Watch for browser/canvas resize events
+    window.addEventListener("resize", function () {
+            engine.resize();
+    });
+</script>
+
+</body>
